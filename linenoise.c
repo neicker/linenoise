@@ -167,6 +167,7 @@ enum KEY_ACTION{
 	CTRL_T = 20,        /* Ctrl-t */
 	CTRL_U = 21,        /* Ctrl+u */
 	CTRL_W = 23,        /* Ctrl+w */
+	CTRL_Y = 25,        /* Ctrl+y */
 	ESC = 27,           /* Escape */
 	BACKSPACE =  127    /* Backspace */
 };
@@ -660,6 +661,38 @@ int linenoiseEditInsert(struct linenoiseState *l, char c) {
     return 0;
 }
 
+/* Insert the string 's' at cursor current position.
+ *
+ * On error writing to the terminal -1 is returned, otherwise 0. */
+int linenoiseEditInsertString(struct linenoiseState *l, char *s) {
+    size_t sLen;
+    if (!s) return -1;
+    sLen = strlen(s);
+    if (l->len+sLen <= l->buflen) {
+        if (l->len == l->pos) {
+            memcpy(l->buf+l->pos,s,sLen);
+            l->pos += sLen;
+            l->len += sLen;
+            l->buf[l->len] = '\0';
+            if ((!mlmode && l->plen+l->len < l->cols && !hintsCallback)) {
+                /* Avoid a full update of the line in the
+                 * trivial case. */
+                if (write(l->ofd,s,sLen) == -1) return -1;
+            } else {
+                refreshLine(l);
+            }
+        } else {
+            memmove(l->buf+l->pos+sLen,l->buf+l->pos,l->len-l->pos);
+            memcpy(l->buf+l->pos,s,sLen);
+            l->len += sLen;
+            l->pos += sLen;
+            l->buf[l->len] = '\0';
+            refreshLine(l);
+        }
+    }
+    return 0;
+}
+
 /* Move cursor on the left. */
 void linenoiseEditMoveLeft(struct linenoiseState *l) {
     if (l->pos > 0) {
@@ -740,6 +773,8 @@ void linenoiseEditBackspace(struct linenoiseState *l) {
     }
 }
 
+static char *cache = NULL;
+
 /* Delete the previosu word, maintaining the cursor at the start of the
  * current word. */
 void linenoiseEditDeletePrevWord(struct linenoiseState *l) {
@@ -750,6 +785,13 @@ void linenoiseEditDeletePrevWord(struct linenoiseState *l) {
         l->pos--;
     while (l->pos > 0 && l->buf[l->pos-1] != ' ')
         l->pos--;
+    /* save to cache */
+    char tmp = l->buf[old_pos];
+    l->buf[old_pos] = '\0';
+    if (cache) free(cache);
+    cache = strdup(l->buf+l->pos);
+    l->buf[old_pos] = tmp;
+
     diff = old_pos - l->pos;
     memmove(l->buf+l->pos,l->buf+old_pos,l->len-old_pos+1);
     l->len -= diff;
@@ -921,11 +963,15 @@ static int linenoiseEdit(int stdin_fd, int stdout_fd, char *buf, size_t buflen, 
             if (linenoiseEditInsert(&l,c)) return -1;
             break;
         case CTRL_U: /* Ctrl+u, delete the whole line. */
+            if (cache) free(cache);
+            cache = strdup(buf);
             buf[0] = '\0';
             l.pos = l.len = 0;
             refreshLine(&l);
             break;
         case CTRL_K: /* Ctrl+k, delete from current to end of line. */
+            if (cache) free(cache);
+            cache = strdup(buf+l.pos);
             buf[l.pos] = '\0';
             l.len = l.pos;
             refreshLine(&l);
@@ -942,6 +988,9 @@ static int linenoiseEdit(int stdin_fd, int stdout_fd, char *buf, size_t buflen, 
             break;
         case CTRL_W: /* ctrl+w, delete previous word */
             linenoiseEditDeletePrevWord(&l);
+            break;
+        case CTRL_Y: /* ctrl+w, yank cache if any */
+            if (cache) linenoiseEditInsertString(&l,cache);
             break;
         }
     }
