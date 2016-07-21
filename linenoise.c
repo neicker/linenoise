@@ -769,6 +769,29 @@ void linenoiseEditHistoryNext(struct linenoiseState *l, int dir) {
     }
 }
 
+void linenoiseEditHistSrch(struct linenoiseState *l, int dir) {
+    if (history_len > 1) {
+        /* Update the current history entry before to
+         * overwrite it with the next one. */
+        free(history[history_len - 1 - l->history_index]);
+        history[history_len - 1 - l->history_index] = strdup(l->buf);
+        /* Find the new entry */
+        int old_index = l->history_index;
+        do {
+            l->history_index += (dir == LINENOISE_HISTORY_PREV) ? 1 : -1;
+            if (l->history_index < 0 || l->history_index >= history_len) {
+                l->history_index = old_index;
+                return;
+            }
+        } while (strncmp(history[history_len - 1 - l->history_index],l->buf,
+                         l->pos));
+        strncpy(l->buf,history[history_len - 1 - l->history_index],l->buflen);
+        l->buf[l->buflen-1] = '\0';
+        l->len = strlen(l->buf);
+        refreshLine(l);
+    }
+}
+
 /* Delete the character at the right of the cursor without altering the cursor
  * position. Basically this is what happens with the "Delete" keyboard key. */
 void linenoiseEditDelete(struct linenoiseState *l) {
@@ -938,6 +961,12 @@ static int linenoiseEdit(int stdin_fd, int stdout_fd, char *buf, size_t buflen, 
                         switch(seq[1]) {
                         case '3': /* Delete key. */
                             linenoiseEditDelete(&l);
+                            break;
+                        case '5': /* PgUp key. */
+                            linenoiseEditHistSrch(&l, LINENOISE_HISTORY_PREV);
+                            break;
+                        case '6': /* PgDown key. */
+                            linenoiseEditHistSrch(&l, LINENOISE_HISTORY_NEXT);
                             break;
                         }
                     }
