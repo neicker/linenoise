@@ -8,6 +8,8 @@ void completion(const char *buf, linenoiseCompletions *lc) {
     if (buf[0] == 'h') {
         linenoiseAddCompletion(lc,"hello");
         linenoiseAddCompletion(lc,"hello there");
+    } else if (buf[0] == 's') {
+        linenoiseAddCompletion(lc,"show");
     }
 }
 
