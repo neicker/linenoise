@@ -355,6 +355,11 @@ static int completeLine(struct linenoiseState *ls) {
     completionCallback(ls->buf,&lc);
     if (lc.len == 0) {
         linenoiseBeep();
+    } else if (lc.len == 1) {
+        /* exactly one match, accept unconditionally */
+        nwritten = snprintf(ls->buf,ls->buflen,"%s ",lc.cvec[0]);
+        ls->len = ls->pos = nwritten;
+        refreshLine(ls);
     } else {
         size_t stop = 0, i = 0;
 
