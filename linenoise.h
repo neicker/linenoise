@@ -66,6 +66,13 @@ void linenoiseClearScreen(void);
 void linenoiseSetMultiLine(int ml);
 void linenoisePrintKeyCodes(void);
 
+typedef void(linenoiseHandlingCallback)(const char *);
+int linenoiseSetHandlerCallback(char *prompt, linenoiseHandlingCallback *);
+void linenoiseRemoveHandlerCallback(void);
+void linenoiseSetPrompt(char *);
+void linenoiseReadChar(void);
+int linenoiseForcedUpdateDisplay(void);
+
 #ifdef __cplusplus
 }
 #endif
