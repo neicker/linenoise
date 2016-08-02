@@ -65,6 +65,7 @@ int main(void)
 
     linenoiseSetHandlerCallback(NULL, callback);
     linenoiseSetPrompt("input>");
+    linenoiseForcedUpdateDisplay();
 
     while(!stopped) {
 #define MAX_EVENTS 10
