@@ -1242,7 +1242,6 @@ void linenoiseSetPrompt(char *prompt)
     if (as.prompt) free((char *)as.prompt);
     as.prompt = prompt ? strdup(prompt) : prompt;
     as.plen = prompt ? strlen(prompt) : 0;
-    linenoiseForcedUpdateDisplay();
 }
 
 void linenoiseReadChar(void)
